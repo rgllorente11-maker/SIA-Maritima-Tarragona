@@ -2,8 +2,8 @@ streamlit
 numpy
 pandas
 matplotlib
-tensorflow
-keras
+tensorflow==2.15.1
+keras==2.15.0
 joblib
 scikit-learn
 xarray
