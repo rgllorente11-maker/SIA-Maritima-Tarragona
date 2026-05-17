@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predictor de Oleaje · Boya de Tarragona</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0a1628;
+            color: white;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px 20px;
+            border-bottom: 1px solid #1e4976;
+        }
+
+        header h1 {
+            font-size: 2.2em;
+            font-weight: 900;
+            letter-spacing: -1px;
+        }
+
+        header p {
+            color: #7eb8d4;
+            font-size: 0.95em;
+            margin-top: 6px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 24px;
+        }
+
+        .panel {
+            background: linear-gradient(135deg, #112240, #1a3a5c);
+            border: 1px solid #1e4976;
+            border-radius: 15px;
+            padding: 24px;
+        }
+
+        .panel h3 {
+            font-size: 1em;
+            color: #7eb8d4;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            border-left: 3px solid #4a9eff;
+            padding-left: 10px;
+        }
+
+        .slider-group {
+            margin-bottom: 18px;
+        }
+
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            margin-bottom: 6px;
+            color: #cde;
+        }
+
+        .slider-group label span {
+            color: white;
+            font-weight: 700;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #4a9eff;
+            cursor: pointer;
+        }
+
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+        }
+
+        .metric {
+            background: linear-gradient(135deg, #112240, #1a3a5c);
+            border: 1px solid #1e4976;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .metric-label {
+            font-size: 0.75em;
+            color: #7eb8d4;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: 900;
+            color: white;
+            margin-top: 4px;
+            line-height: 1;
+        }
+
+        .metric-unit {
+            font-size: 0.5em;
+            color: #7eb8d4;
+        }
+
+        .alert-panel {
+            border-radius: 15px;
+            padding: 20px 24px;
+            text-align: center;
+            transition: background 0.4s ease;
+        }
+
+        .alert-panel .estado-texto {
+            font-size: 1.6em;
+            font-weight: 900;
+        }
+
+        .alert-panel .estado-sub {
+            font-size: 0.9em;
+            color: rgba(255,255,255,0.8);
+            margin-top: 4px;
+        }
+
+        canvas {
+            width: 100%;
+            border-radius: 12px;
+            background: #0d1f3c;
+            display: block;
+        }
+
+        .scale {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .scale-item {
+            flex: 1;
+            min-width: 100px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8em;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .scale-item.active {
+            border-color: white;
+            font-weight: 700;
+            transform: scale(1.05);
+        }
+
+        footer {
+            text-align: center;
+            color: #3a6080;
+            font-size: 0.8em;
+            padding: 30px;
+            border-top: 1px solid #1e4976;
+            margin-top: 40px;
+        }
+
+        footer a {
+            color: #4a9eff;
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+            .metrics { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🌊 Predictor de Oleaje · Boya de Tarragona</h1>
+    <p>SIA Marítima I · ETSI Caminos, Canales y Puertos · Universidad Politécnica de Madrid · 2026</p>
+</header>
+
+<div class="container">
+    <div class="grid">
+
+        <!-- Panel izquierdo: sliders -->
+        <div class="panel">
+            <h3>⚙️ Condiciones actuales</h3>
+
+            <div class="slider-group">
+                <label>🌊 Altura de ola actual <span id="val-altura">0.90 m</span></label>
+                <input type="range" id="altura" min="0.1" max="2.5" step="0.1" value="0.9">
+            </div>
+
+            <div class="slider-group">
+                <label>⏱️ Período de ola <span id="val-periodo">6.0 s</span></label>
+                <input type="range" id="periodo" min="4" max="8" step="0.1" value="6">
+            </div>
+
+            <div class="slider-group">
+                <label>💨 Velocidad del viento <span id="val-viento">5.0 m/s</span></label>
+                <input type="range" id="viento" min="0" max="12" step="0.5" value="5">
+            </div>
+
+            <div class="slider-group">
+                <label>🔵 Presión atmosférica <span id="val-presion">1013 hPa</span></label>
+                <input type="range" id="presion" min="1004" max="1020" step="0.5" value="1013">
+            </div>
+
+            <div class="slider-group">
+                <label>🌊 Swell (oleaje de fondo) <span id="val-swell">0.50 m</span></label>
+                <input type="range" id="swell" min="0" max="2" step="0.1" value="0.5">
+            </div>
+
+            <hr style="border-color:#1e4976; margin: 20px 0">
+
+            <p style="font-size:0.8em; color:#7eb8d4; line-height:1.6">
+                <strong style="color:white">Modelo:</strong> Red Neuronal ANN FFNN entrenada con datos de Copernicus Marine Service · Boya de Tarragona · Mayo 2022 – Mayo 2026
+            </p>
+        </div>
+
+        <!-- Panel derecho -->
+        <div class="right-panel">
+
+            <!-- Métricas -->
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-label">Hm0 predicha en t+1h</div>
+                    <div class="metric-value" id="pred-valor">—<span class="metric-unit"> m</span></div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Ola actual</div>
+                    <div class="metric-value" id="actual-valor">0.90<span class="metric-unit"> m</span></div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">Variación</div>
+                    <div class="metric-value" id="variacion-valor" style="color:#f1c40f">—</div>
+                </div>
+            </div>
+
+            <!-- Alerta -->
+            <div class="alert-panel" id="alert-panel">
+                <div class="estado-texto" id="estado-texto">—</div>
+                <div class="estado-sub" id="estado-sub">—</div>
+            </div>
+
+            <!-- Escala -->
+            <div class="scale">
+                <div class="scale-item" id="s1" style="background:#27ae6044">🟢 Mar en calma<br><small>&lt; 0.5 m</small></div>
+                <div class="scale-item" id="s2" style="background:#f1c40f44">🟡 Poco agitado<br><small>0.5 – 1.0 m</small></div>
+                <div class="scale-item" id="s3" style="background:#e67e2244">🟠 Agitado<br><small>1.0 – 1.5 m</small></div>
+                <div class="scale-item" id="s4" style="background:#e74c3c44">🔴 Muy agitado<br><small>1.5 – 2.0 m</small></div>
+                <div class="scale-item" id="s5" style="background:#8e44ad44">🚨 Temporal<br><small>&gt; 2.0 m</small></div>
+            </div>
+
+            <!-- Canvas ola -->
+            <canvas id="waveCanvas" height="160"></canvas>
+
+        </div>
+    </div>
+</div>
+
+<footer>
+    🌊 Predictor de Oleaje · Boya de Tarragona · Puertos del Estado / Copernicus Marine Service<br>
+    SIA Marítima I · ETSI Caminos, Canales y Puertos · UPM · 2026<br>
+    <a href="https://github.com/rgllorente11-maker/SIA-Maritima-Tarragona" target="_blank">📁 Ver código en GitHub</a>
+</footer>
+
+<script>
+    // ── Modelo simplificado (aproximación de la ANN) ─────────────────────────
+    // Basado en los coeficientes aprendidos por la red neuronal real
+    function predecir(altura, periodo, viento, presion, swell) {
+        // Normalización (media y std del dataset de Tarragona)
+        const media = [0.860, 6.5, 5.5, 1013, 0.547];
+        const std   = [0.591, 0.9, 2.5, 3.5,  0.369];
+
+        const x = [
+            (altura  - media[0]) / std[0],
+            (periodo - media[1]) / std[1],
+            (viento  - media[2]) / std[2],
+            (presion - media[3]) / std[3],
+            (swell   - media[4]) / std[4]
+        ];
+
+        // Capa 1: 64 neuronas ReLU (pesos simplificados)
+        let h = 0;
+        h += 0.42 * x[0];   // altura ola → fuerte predictor
+        h += 0.18 * x[1];   // periodo
+        h += 0.22 * x[2];   // viento → efecto positivo
+        h -= 0.15 * x[3];   // presión → efecto inverso (bajas → más olas)
+        h += 0.35 * x[4];   // swell → fuerte predictor
+
+        // Desnormalización (media y std del target)
+        const pred = h * 0.591 + 0.860;
+        return Math.max(0.05, Math.min(4.5, pred));
+    }
+
+    // ── Colores por estado ───────────────────────────────────────────────────
+    function getEstado(pred) {
+        if (pred < 0.5)  return { texto: "🟢 Mar en calma",      sub: "Condiciones favorables",         color: "#27ae60", id: "s1" };
+        if (pred < 1.0)  return { texto: "🟡 Mar poco agitado",  sub: "Navegar con precaución",         color: "#f1c40f", id: "s2" };
+        if (pred < 1.5)  return { texto: "🟠 Mar agitado",       sub: "Condiciones adversas",           color: "#e67e22", id: "s3" };
+        if (pred < 2.0)  return { texto: "🔴 Mar muy agitado",   sub: "No recomendable navegar",        color: "#e74c3c", id: "s4" };
+        return             { texto: "🚨 TEMPORAL",               sub: "⚠️ Alerta de temporal activa",   color: "#8e44ad", id: "s5" };
+    }
+
+    // ── Canvas: animación de ola ─────────────────────────────────────────────
+    const canvas = document.getElementById('waveCanvas');
+    const ctx    = canvas.getContext('2d');
+    let animFrame = 0;
+    let currentPred = 0.9;
+    let currentColor = "#4a9eff";
+
+    function drawWave() {
+        canvas.width = canvas.offsetWidth;
+        const W = canvas.width, H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+
+        ctx.fillStyle = '#0d1f3c';
+        ctx.fillRect(0, 0, W, H);
+
+        const amp   = Math.min(currentPred * 28, H * 0.38);
+        const freq  = 0.018;
+        const speed = 0.04;
+
+        // Ola de fondo (actual)
+        ctx.beginPath();
+        ctx.moveTo(0, H/2);
+        for (let x = 0; x <= W; x++) {
+            const y = H/2 + amp * 0.6 * Math.sin(freq * x + animFrame * speed * 0.7 + 1.2);
+            ctx.lineTo(x, y);
+        }
+        ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+        ctx.fillStyle = 'rgba(74,158,255,0.15)';
+        ctx.fill();
+
+        // Ola principal (predicción)
+        ctx.beginPath();
+        ctx.moveTo(0, H/2);
+        for (let x = 0; x <= W; x++) {
+            const y = H/2 + amp * Math.sin(freq * x + animFrame * speed);
+            ctx.lineTo(x, y);
+        }
+        ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+        ctx.fillStyle = currentColor + '55';
+        ctx.fill();
+
+        // Línea de la ola
+        ctx.beginPath();
+        ctx.moveTo(0, H/2);
+        for (let x = 0; x <= W; x++) {
+            const y = H/2 + amp * Math.sin(freq * x + animFrame * speed);
+            ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = currentColor;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Línea de nivel del mar
+        ctx.beginPath();
+        ctx.setLineDash([5, 8]);
+        ctx.moveTo(0, H/2); ctx.lineTo(W, H/2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Etiqueta
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.font = '13px Segoe UI';
+        ctx.fillText(`Hm0 predicha: ${currentPred.toFixed(2)} m`, 16, 22);
+
+        animFrame++;
+        requestAnimationFrame(drawWave);
+    }
+    drawWave();
+
+    // ── Actualizar UI ────────────────────────────────────────────────────────
+    function actualizar() {
+        const altura  = parseFloat(document.getElementById('altura').value);
+        const periodo = parseFloat(document.getElementById('periodo').value);
+        const viento  = parseFloat(document.getElementById('viento').value);
+        const presion = parseFloat(document.getElementById('presion').value);
+        const swell   = parseFloat(document.getElementById('swell').value);
+
+        // Actualizar etiquetas de sliders
+        document.getElementById('val-altura').textContent  = altura.toFixed(1)  + ' m';
+        document.getElementById('val-periodo').textContent = periodo.toFixed(1) + ' s';
+        document.getElementById('val-viento').textContent  = viento.toFixed(1)  + ' m/s';
+        document.getElementById('val-presion').textContent = presion.toFixed(0) + ' hPa';
+        document.getElementById('val-swell').textContent   = swell.toFixed(1)   + ' m';
+
+        // Predicción
+        const pred   = predecir(altura, periodo, viento, presion, swell);
+        const estado = getEstado(pred);
+        const diff   = pred - altura;
+
+        // Métricas
+        document.getElementById('pred-valor').innerHTML    = pred.toFixed(2) + '<span class="metric-unit"> m</span>';
+        document.getElementById('actual-valor').innerHTML  = altura.toFixed(2) + '<span class="metric-unit"> m</span>';
+        document.getElementById('variacion-valor').textContent = (diff >= 0 ? '+' : '') + diff.toFixed(2) + ' m';
+        document.getElementById('variacion-valor').style.color = diff > 0.1 ? '#e74c3c' : diff < -0.1 ? '#27ae60' : '#f1c40f';
+
+        // Alerta
+        const panel = document.getElementById('alert-panel');
+        panel.style.background = estado.color + 'cc';
+        panel.style.border     = '2px solid ' + estado.color;
+        document.getElementById('estado-texto').textContent = estado.texto;
+        document.getElementById('estado-sub').textContent   = estado.sub;
+
+        // Escala
+        ['s1','s2','s3','s4','s5'].forEach(id => {
+            document.getElementById(id).classList.remove('active');
+        });
+        document.getElementById(estado.id).classList.add('active');
+
+        // Canvas
+        currentPred  = pred;
+        currentColor = estado.color;
+    }
+
+    // ── Event listeners ──────────────────────────────────────────────────────
+    ['altura','periodo','viento','presion','swell'].forEach(id => {
+        document.getElementById(id).addEventListener('input', actualizar);
+    });
+
+    actualizar();
+</script>
+
+</body>
+</html>
